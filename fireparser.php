@@ -60,7 +60,7 @@ foreach ($gm_array_one['features'] as $gm_feature) {
     if (!in_array($name, $gm_pushed)) {
         $gm_pushed[] = $name;
         foreach($junk_keys as $junk_key) {
-            unset($gm_feature['properties'][$junk_key]);    
+            unset($gm_feature['properties'][$junk_key]);
         }
         array_push($gm_array, $gm_feature);
     }
@@ -71,7 +71,7 @@ foreach ($gm_array_two['features'] as $gm_feature) {
     if (!in_array($name, $gm_pushed)) {
         $gm_pushed[] = $name;
         foreach($junk_keys as $junk_key) {
-            unset($gm_feature['properties'][$junk_key]);    
+            unset($gm_feature['properties'][$junk_key]);
         }
         array_push($gm_array, $gm_feature);
     }
@@ -82,8 +82,9 @@ foreach ($gm_array_three['features'] as $gm_feature) {
     if (!in_array($name, $gm_pushed)) {
         $gm_pushed[] = $name;
         foreach($junk_keys as $junk_key) {
-            unset($gm_feature['properties'][$junk_key]);    
+            unset($gm_feature['properties'][$junk_key]);
         }
+        array_push($gm_array, $gm_feature);
     }
 }
 
