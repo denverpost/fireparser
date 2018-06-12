@@ -116,7 +116,7 @@ $perim_raw = json_decode($perim_raw_file,TRUE);
 
 // tolerance and include for the RDP simplification
 require('douglas-peucker.php');
-$tolerance = .00005;
+$tolerance = .0001;
 
 // GeoMAC perimiter data elements we don't need
 $junk_props = array('objectid','agency','comments','mapmethod','uniquefireidentifier','pooownerunit','complexname','firecode','complexparentirwinid','pooresponsibleunit','localincidentidentifier','irwinid','incomplex','complexfirecode','mergeid','st_area(shape)','st_length(shape)');
