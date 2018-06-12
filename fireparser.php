@@ -2,6 +2,17 @@
 
 require('constants.php');
 
+// A function to purge the final files from Fastly cache
+function purgeFTP($file_name_full) {
+    $url='http://extras.denverpost.com/app/wildfire/combined/' . $file_name_full;
+    $ch=curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PURGE');
+    curl_exec($ch);
+    curl_close($ch);
+}
+
 /** A bunch of arrays we're going to use to push data into and
  * then later move it elsewhere or output is as json
  **/
@@ -181,6 +192,7 @@ $ftp_uploaded = ftp_put($conn_id, $FTP_DIRECTORY.'/'.$output_all_file, './cache/
 
 if ($ftp_uploaded) {
     $error_out = 'Datafile uploaded!';
+    purgeFTP($output_all_file);
 } else {
     $error_out = 'An oops has occurred...';
 }
@@ -191,6 +203,7 @@ $perim_uploaded = ftp_put($conn_id, $FTP_DIRECTORY.'/'.$perim_all_file, './cache
 
 if ($perim_uploaded) {
     $perim_error_out = 'Perimeter file uploaded!';
+    purgeFTP($perim_all_file);
 } else {
     $perim_error_out = 'An oops has occurred...';
 }
