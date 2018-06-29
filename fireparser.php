@@ -105,12 +105,15 @@ foreach ($gm_array_three['features'] as $gm_feature) {
  */
 $count_two = 0;
 foreach ($gm_array as $gm_feature) {
+	$state = ($gm_feature['properties']['state'] == 'TA') ? 'CA' : $gm_feature['properties']['state'];
 	foreach ($iw_output as $iw_item) {
 		$sim = similar_text(strtolower(trim($gm_feature['properties']['incidentname'])), strtolower(trim($iw_item['title'])), $perc);
-		if ((int) $perc > 90) {
+		if ((int) $perc > 90 && $iw_item['state'] === $state) {
 			$gm_feature['properties']['iw_link'] = $iw_item['link'];
-			$gm_feature['properties']['iw_description'] = trim($iw_item['description']);
-			$count_two++;
+			if (isset($iw_item['description'])) {
+				$gm_feature['properties']['iw_description'] = trim($iw_item['description']);
+				$count_two++;
+			}
 		}
 	}
 	// REMOVE UNNEEDED FIELDS HERE
