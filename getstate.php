@@ -2,58 +2,62 @@
 
 // This function is for string null or empty check in the main function
 
+function underscoresIt($string){
+	return strtolower(str_replace(' ', '_', trim($string)));
+}
+
 function get_state_abbr($state) {
 	$states = array(
-		'Alabama' => 'AL',
-		'Alaska' => 'AK',
-		'Arizona' => 'AZ',
-		'Arkansas' => 'AR',
-		'California' => 'CA',
-		'Colorado' => 'CO',
-		'Connecticut' => 'CT',
-		'Delaware' => 'DE',
-		'Florida' => 'FL',
-		'Georgia' => 'GA',
-		'Hawaii' => 'HI',
-		'Idaho' => 'ID',
-		'Illinois' => 'IL',
-		'Indiana' => 'IN',
-		'Iowa' => 'IA',
-		'Kansas' => 'KS',
-		'Kentucky' => 'KY',
-		'Louisiana' => 'LA',
-		'Maine' => 'ME',
-		'Maryland' => 'MD',
-		'Massachusetts' => 'MA',
-		'Michigan' => 'MI',
-		'Minnesota' => 'MN',
-		'Mississippi' => 'MS',
-		'Missouri' => 'MO',
-		'Montana' => 'MT',
-		'Nebraska' => 'NE',
-		'Nevada' => 'NV',
-		'New Hampshire' => 'NH',
-		'New Jersey' => 'NJ',
-		'New Mexico' => 'NM',
-		'New York' => 'NY',
-		'North Carolina' => 'NC',
-		'North Dakota' => 'ND',
-		'Ohio' => 'OH',
-		'Oklahoma' => 'OK',
-		'Oregon' => 'OR',
+		'alabama' => 'AL',
+		'alaska' => 'AK',
+		'arizona' => 'AZ',
+		'arkansas' => 'AR',
+		'california' => 'CA',
+		'colorado' => 'CO',
+		'connecticut' => 'CT',
+		'delaware' => 'DE',
+		'florida' => 'FL',
+		'georgia' => 'GA',
+		'hawaii' => 'HI',
+		'idaho' => 'ID',
+		'illinois' => 'IL',
+		'indiana' => 'IN',
+		'iowa' => 'IA',
+		'kansas' => 'KS',
+		'kentucky' => 'KY',
+		'louisiana' => 'LA',
+		'maine' => 'ME',
+		'maryland' => 'MD',
+		'massachusetts' => 'MA',
+		'michigan' => 'MI',
+		'minnesota' => 'MN',
+		'mississippi' => 'MS',
+		'missouri' => 'MO',
+		'montana' => 'MT',
+		'nebraska' => 'NE',
+		'nevada' => 'NV',
+		'new_hampshire' => 'NH',
+		'new_jersey' => 'NJ',
+		'new_mexico' => 'NM',
+		'new_york' => 'NY',
+		'north_carolina' => 'NC',
+		'north_dakota' => 'ND',
+		'ohio' => 'OH',
+		'oklahoma' => 'OK',
+		'oregon' => 'OR',
 		'Pennsylvania' => 'PA',
-		'Rhode Island' => 'RI',
-		'South Carolina' => 'SC',
-		'South Dakota' => 'SD',
-		'Tennessee' => 'TN',
-		'Texas' => 'TX',
-		'Utah' => 'UT',
-		'Vermont' => 'VT',
-		'Virginia' => 'VA',
-		'Washington' => 'WA',
-		'West Virginia' => 'WV',
-		'Wisconsin' => 'WI',
-		'Wyoming' => 'WY',
+		'rhode_island' => 'RI',
+		'south_carolina' => 'SC',
+		'south_dakota' => 'SD',
+		'tennessee' => 'TN',
+		'texas' => 'TX',
+		'utah' => 'UT',
+		'vermont' => 'VT',
+		'virginia' => 'VA',
+		'washington' => 'WA',
+		'west_virginia' => 'WV',
+		'wisconsin' => 'WI',
+		'wyoming' => 'WY',
 	);
 	return $states[$state];
 }
@@ -62,28 +66,31 @@ function IsNullOrEmptyString($question) {
 	return (!isset($question) || trim($question) === '');
 }
 
-$agents = array(
-	'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.7; rv:7.0.1) Gecko/20100101 Firefox/7.0.1',
-	'Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.1.9) Gecko/20100508 SeaMonkey/2.0.4',
-	'Mozilla/5.0 (Windows; U; MSIE 7.0; Windows NT 6.0; en-US)',
-	'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_7; da-dk) AppleWebKit/533.21.1 (KHTML, like Gecko) Version/5.0.5 Safari/533.21.1'
- 
-);
+
+function curlTheBitch($url) {
+	$headers = array(
+		'Accept: application/json',
+		'Content-Type: application/json',
+		'Content-length: 0',
+		'Email: dpo@denverpost.com'
+	);
+	$ch = curl_init($url);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+	curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+	curl_setopt($ch, CURLOPT_USERAGENT, "dpo@denverpost.com");
+	$response = curl_exec($ch);
+	curl_close($ch);
+	return $response;
+}
+
 
 function getAddress($latitude, $longitude) {
-	$url = "http://maps.googleapis.com/maps/api/geocode/json?latlng=$latitude,$longitude&sensor=false"/* . '&token=AIzaSyDFesAMjYEKk6hCIxnQ_3SIwJ6rImbSch8'*/;
-	$response = file_get_contents($url);
+	$url = "https://nominatim.openstreetmap.org/reverse?email=dpo@denverpost.com&format=json&lat=$latitude&lon=$longitude&zoom=18&addressdetails=1";
+
+	$response = curlTheBitch($url);
 	$json = json_decode($response, TRUE); //set json response to array based
-	$address_arr = (isset($json['results'][0])) ? $json['results'][0]['address_components'] : false;
-	if ($address_arr) {
-		foreach ($address_arr as $address) {
-			if ($address['types'][0] == "administrative_area_level_1") {
-				$state_block = $address;
-				break;
-			}
-		}
-		return (!IsNullOrEmptyString($state_block['short_name'])) ? $state_block['short_name'] : get_state_abbr($state_block['long_name']);
-	} else {
-		return false;
+	
+	if (isset($json['address'])) {
+		return get_state_abbr(underscoresIt($json['address']['state']));
 	}
 }

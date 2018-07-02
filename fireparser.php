@@ -57,14 +57,13 @@ foreach ($iw_array['channel']['item'] as $fire) {
 		$fire['title'] = str_replace('  ', ' ', $fire['title']);
 		$fire['title'] = trim(str_replace('Fire', '', trim($fire['title'])));
 		$fire['state'] = false;
-		$coords = array_map('trim', explode(' ', $fire['georss_point']));
-		$coords[0] = round((int)$coords[0],6);
-		$coords[1] = round((int)$coords[1],6);
+		$coords[0] = round($fire['geo_lat'],6);
+		$coords[1] = round($fire['geo_long'],6);
 		if (isInColorado($coords)) {
 			$fire['state'] = 'CO';
 		} else {
 			$fire['state'] = getAddress($coords[0], $coords[1]);
-		msleep(.25);
+			msleep(.25);
 		}
 		if (!$fire['state']) {
 			echo 'Warning: Couldn\'t get state data for fire with name "' . $fire['title'] .'."' ."\n";
@@ -135,7 +134,7 @@ foreach ($gm_array as $gm_feature) {
 	$state = ($gm_feature['properties']['state'] == 'TA') ? 'CA' : $gm_feature['properties']['state'];
 	foreach ($iw_output as $iw_item) {
 		$sim = similar_text(strtolower(trim($gm_feature['properties']['incidentname'])), strtolower(trim($iw_item['title'])), $perc);
-		if ((int) $perc > 90 && $iw_item['state'] === $state) {
+		if ((int)$perc > 90 && $iw_item['state'] == $state) {
 			$gm_feature['properties']['iw_link'] = $iw_item['link'];
 			if (isset($iw_item['description'])) {
 				$gm_feature['properties']['iw_description'] = trim($iw_item['description']);
