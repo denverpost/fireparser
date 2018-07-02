@@ -24,6 +24,14 @@ function purgeFTP($file_name_full) {
 	curl_close($ch);
 }
 
+function isInColorado($coords) {
+	if ($coords[0] > 36.9 && $coords[0] < 41 && $coords[1] > 102 && $coords[1] < 109.05) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
 /** A bunch of arrays we're going to use to push data into and
  * then later move it elsewhere or output is as json
  **/
@@ -41,27 +49,30 @@ $iw_json = json_encode($iw_xml);
 $iw_array = json_decode($iw_json, TRUE);
 
 // Get the inciweb feed and parse out only the wildfires
-		$extra_line = '';
 foreach ($iw_array['channel']['item'] as $fire) {
-	//echo $fire['title']."\n";
 	if (strpos(strtolower($fire['title']), '(wildfire)')) {
 		$stripterms = array(' Fire (Wildfire)', ' Complex (Wildfire)', ' Fires (Wildfire)', '(Wildfire)');
 		$fire['title'] = trim(str_replace($stripterms, '', $fire['title']));
 		$fire['title'] = preg_replace('/\((.+?)\)/', ' ', $fire['title']);
 		$fire['title'] = str_replace('  ', ' ', $fire['title']);
 		$fire['title'] = trim(str_replace('Fire', '', trim($fire['title'])));
+		$fire['state'] = false;
 		$coords = array_map('trim', explode(' ', $fire['georss_point']));
-		$fire['state'] = getAddress(round((int)$coords[0],6), round((int)$coords[1],6));
-		msleep(.25);
-		if (!$fire['state']) {
-			$extra_line = "\n";
-			echo "\n".'Warning: Couldn\'t get state data for fire with name "' . $fire['title'] .'"; trying \'CO\' as a backup.' ."\n";
+		$coords[0] = round((int)$coords[0],6);
+		$coords[1] = round((int)$coords[1],6);
+		if (isInColorado($coords)) {
 			$fire['state'] = 'CO';
+		} else {
+			$fire['state'] = getAddress($coords[0], $coords[1]);
+		msleep(.25);
+		}
+		if (!$fire['state']) {
+			echo 'Warning: Couldn\'t get state data for fire with name "' . $fire['title'] .'."' ."\n";
 		}
 		array_push($iw_output, $fire);
 	}
 }
-echo $extra_line . 'FOUND ' . count($iw_output) . ' wildfires in Inciweb feed!' . "\n";
+echo 'FOUND ' . count($iw_output) . ' wildfires in Inciweb feed!' . "\n";
 
 $gm_file_two = implode(file('https://wildfire.cr.usgs.gov/arcgis/rest/services/geomac_dyn/MapServer/1/query?where=&text=&objectIds=&time=2018&geometry=&geometryType=esriGeometryPoint&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=*&returnGeometry=true&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentsOnly=false&datumTransformation=&parameterValues=&rangeValues=&f=geojson&__ncforminfo=DMimt_s_f-IEDhoYyhysyIfKhOTs-VdxFSs-7Szu-ukQTRIZ6lvYGF7AaYXs1llK1GIPOdZetx5zRVUYE22A1xv5grxpnngzeac6ct-ExMo_-MJsoteVkGgWw0ssrXR_KkYtnnNh6iUiU2ab4eXzMCLJWUy1cWMD4APf4MtlqEcGdAZGJbrihrydrB8aOMf2xp8102yN6WOno4UPaUW8sdbt_bqr-ZWgn6Gruu48yQ6gbBJbZw_V-V06HQMB9KFxhvdQ_YIJDQtVCxvz5KC7XTb4ox644NMlv_iUpdQhINkxHw7XpIzvGYO09EYWZDL0k-T3z2KbRNUOIaKQ_Mkdo2xGnlGbFats-32BuxnN4D11wBGPLWOf8NP4f1L3FJTgqRS6Jsj1HindzmgNj-f6Njxdzoi2vw8olDlccEZhwLKMN6MYUwVj5k_07szk1ueW5a0QJJCrGZnh-mSVAKR0qtvjCkC-zYYsJccDsg0qziKZOWIB1tEgBccPmzlBnmgoxqWCyytsF_efZpwYE7J6HFGNIZzgJYzPO5oahV5GDZava-jUtyfgqDlHuuVlbdR23Ap_dT-XGOQV9IDImn-NxZrYdY9jsSga3xZX47kjN7VIhZ-oF5iCbzpqHqGUZCJzHyubsnPl7uS3dVaf5FNKQJW0G7oZqlm5Jowyagcxf7giDhouAmmniw%3D%3D'));
 $gm_array_two = json_decode($gm_file_two, TRUE);
