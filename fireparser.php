@@ -1,7 +1,17 @@
 <?php
 
+date_default_timezone_set('America/Denver');
+$run_date = date('Y-m-d H:i:s', time());
+echo $run_date . ' parse beginning...'."\n";
+
+ini_set('memory_limit', '512M');
+
 require 'constants.php';
 require 'getstate.php';
+
+function msleep($time) {
+    usleep($time * 1000000);
+}
 
 // A function to purge the final files from Fastly cache
 function purgeFTP($file_name_full) {
@@ -31,21 +41,27 @@ $iw_json = json_encode($iw_xml);
 $iw_array = json_decode($iw_json, TRUE);
 
 // Get the inciweb feed and parse out only the wildfires
+		$extra_line = '';
 foreach ($iw_array['channel']['item'] as $fire) {
 	//echo $fire['title']."\n";
 	if (strpos(strtolower($fire['title']), '(wildfire)')) {
-		$stripterms = array(' Fire (Wildfire)', ' Complex (Wildfire)', ' Fires (Wildfire)');
+		$stripterms = array(' Fire (Wildfire)', ' Complex (Wildfire)', ' Fires (Wildfire)', '(Wildfire)');
 		$fire['title'] = trim(str_replace($stripterms, '', $fire['title']));
+		$fire['title'] = preg_replace('/\((.+?)\)/', ' ', $fire['title']);
 		$fire['title'] = str_replace('  ', ' ', $fire['title']);
-		$stripterms = array(' Fire (Wildfire)', ' Complex (Wildfire)', ' Fires (Wildfire)');
-		$fire['title'] = trim(str_replace($stripterms, '', $fire['title']));
+		$fire['title'] = trim(str_replace('Fire', '', trim($fire['title'])));
 		$coords = array_map('trim', explode(' ', $fire['georss_point']));
-		$fire['state'] = getAddress($coords[0], $coords[1]);
+		$fire['state'] = getAddress(round((int)$coords[0],6), round((int)$coords[1],6));
+		msleep(.25);
+		if (!$fire['state']) {
+			$extra_line = "\n";
+			echo "\n".'Warning: Couldn\'t get state data for fire with name "' . $fire['title'] .'"; trying \'CO\' as a backup.' ."\n";
+			$fire['state'] = 'CO';
+		}
 		array_push($iw_output, $fire);
 	}
 }
-echo 'INITIAL from INCIWEB: ' . count($iw_array['channel']['item']) . "\n";
-echo 'FOUND (Wildfire)s: ' . count($iw_output) . "\n";
+echo $extra_line . 'FOUND ' . count($iw_output) . ' wildfires in Inciweb feed!' . "\n";
 
 $gm_file_two = implode(file('https://wildfire.cr.usgs.gov/arcgis/rest/services/geomac_dyn/MapServer/1/query?where=&text=&objectIds=&time=2018&geometry=&geometryType=esriGeometryPoint&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=*&returnGeometry=true&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentsOnly=false&datumTransformation=&parameterValues=&rangeValues=&f=geojson&__ncforminfo=DMimt_s_f-IEDhoYyhysyIfKhOTs-VdxFSs-7Szu-ukQTRIZ6lvYGF7AaYXs1llK1GIPOdZetx5zRVUYE22A1xv5grxpnngzeac6ct-ExMo_-MJsoteVkGgWw0ssrXR_KkYtnnNh6iUiU2ab4eXzMCLJWUy1cWMD4APf4MtlqEcGdAZGJbrihrydrB8aOMf2xp8102yN6WOno4UPaUW8sdbt_bqr-ZWgn6Gruu48yQ6gbBJbZw_V-V06HQMB9KFxhvdQ_YIJDQtVCxvz5KC7XTb4ox644NMlv_iUpdQhINkxHw7XpIzvGYO09EYWZDL0k-T3z2KbRNUOIaKQ_Mkdo2xGnlGbFats-32BuxnN4D11wBGPLWOf8NP4f1L3FJTgqRS6Jsj1HindzmgNj-f6Njxdzoi2vw8olDlccEZhwLKMN6MYUwVj5k_07szk1ueW5a0QJJCrGZnh-mSVAKR0qtvjCkC-zYYsJccDsg0qziKZOWIB1tEgBccPmzlBnmgoxqWCyytsF_efZpwYE7J6HFGNIZzgJYzPO5oahV5GDZava-jUtyfgqDlHuuVlbdR23Ap_dT-XGOQV9IDImn-NxZrYdY9jsSga3xZX47kjN7VIhZ-oF5iCbzpqHqGUZCJzHyubsnPl7uS3dVaf5FNKQJW0G7oZqlm5Jowyagcxf7giDhouAmmniw%3D%3D'));
 $gm_array_two = json_decode($gm_file_two, TRUE);
@@ -118,13 +134,16 @@ foreach ($gm_array as $gm_feature) {
 	}
 	// REMOVE UNNEEDED FIELDS HERE
 	array_push($gm_output, $gm_feature);
-	//var_dump($gm_feature['properties']['incidentname']);
 }
-echo 'MATCHES added to GeoMAC: ' . $count_two . "\n";
+echo 'ADDED ' . $count_two . ' Inciweb links to GeoMAC data.' . "\n";
 
 // Set up and fetch the GeoMAC perimeter data feed
 $perim_raw_file = implode(file('https://wildfire.cr.usgs.gov/arcgis/rest/services/geomac_dyn/MapServer/3/query?where=&text=&objectIds=&time=2018&geometry=&geometryType=esriGeometryPolyline&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=*&returnGeometry=true&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentsOnly=false&datumTransformation=&parameterValues=&rangeValues=&f=geojson&__ncforminfo=6l0csKPzjIWR7iEqR7vPK7NwWSp4R7b9Gu3DFZDCbs-aXQbh8UazEo-_SRSFx5P-xe2vv54bLIrdLmXSTJsdOMFZh53Za9Y77n3lW4ogEwm8aeVaLZKiXZEjuJMCG0gBgS-GN1XajaNmcy-iKg5ttGGevEWexPZEqWvbMGWLgLUm4okDf0sQg7tX6ERau2tE6Pbi-8UjGNJJAw_RIuT4RMnZoM3-g8PEKgnCXBIn3AGPcxQbS9zT2Ts2d04Fx_DKeD877kyBWkj2EbpvxoRNQg6I-jNUaNgUK8FG1F8m_HazcnECytvYDG__Bwmbxl9YPKmDDd6iD9nmkoOZ3k9FDg_0M24Ah-Box4kroRCtdoWsmJK_zzV4ErqtDylkSYk3tP-dVZaIOFbF29Pc_Dc7j99QvVeWSVEKSSsUv75BuUdCTWh6AZ0yaM36YH8mzRenJTlsXh0fZxxtZfsjhoGEONlI7WqsOP6ZBEPW2ZB6j8CENRoetpj3okBL5YWVc4jI2v8f5AZLiM7KuPyiAkO7B2q6in72XjzdBiKzhX69sVLDqlVYA1jfkU-WUUv_1RLIkhjy5BN_8S4jXrLsjpb-5stObI2yuP72dWIpjsUTN2woRpr_dCLz9kU8DZ5wSpQ_e9Mi83ZITABQ5abVHs18n01Jyd5Z3ncndTCS51Mv9Os8CovloMnesw%3D%3D'));
 $perim_raw = json_decode($perim_raw_file, TRUE);
+
+if ($perim_raw) {
+	echo 'Starting permiter parse...'."\n";
+}
 
 // tolerance and include for the RDP simplification
 require 'douglas-peucker.php';
@@ -192,23 +211,26 @@ ftp_pasv($conn_id, TRUE);
 $ftp_uploaded = ftp_put($conn_id, $FTP_DIRECTORY . '/' . $output_all_file, './cache/wildfires-combined-all.json', FTP_ASCII);
 
 if ($ftp_uploaded) {
-	$error_out = 'Datafile uploaded!';
+	$error_out = 'Fire data file uploaded!';
 	purgeFTP($output_all_file);
 } else {
 	$error_out = 'An oops has occurred...';
 }
-echo "\n" . $error_out;
+echo $error_out."\n";
 
 // FTP the perimeter data
 $perim_uploaded = ftp_put($conn_id, $FTP_DIRECTORY . '/' . $perim_all_file, './cache/wildfires-combined-perims.json', FTP_ASCII);
 
 if ($perim_uploaded) {
-	$perim_error_out = 'Perimeter file uploaded!';
+	$perim_error_out = 'Fire perimeter file uploaded!';
 	purgeFTP($perim_all_file);
 } else {
 	$perim_error_out = 'An oops has occurred...';
 }
-echo "\n" . $perim_error_out;
+echo $perim_error_out."\n";
 
 //close the FTP connection
 ftp_close($conn_id);
+
+$run_date = date('Y-m-d H:i:s', time());
+echo $run_date . ' parse completed!'."\n";
