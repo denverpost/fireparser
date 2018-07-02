@@ -90,7 +90,7 @@ $junk_keys = array('objectid', 'latitude', 'longitude', 'hotlink', 'status', 'po
  */
 foreach ($gm_array_two['features'] as $gm_feature) {
 	$gm_feature['properties']['is_active'] = true;
-    $gm_feature['properties']['incidentname'] = ucwords(strtolower($gm_feature['properties']['incidentname']));
+    $gm_feature['properties']['incidentname'] = trim(ucwords(strtolower($gm_feature['properties']['incidentname'])));
 	$name = strtolower(trim($gm_feature['properties']['incidentname']));
 	$state = $gm_feature['properties']['state'];
 	if (!isset($gm_pushed[$state])) {
@@ -107,7 +107,7 @@ foreach ($gm_array_two['features'] as $gm_feature) {
 }
 foreach ($gm_array_three['features'] as $gm_feature) {
 	$gm_feature['properties']['is_active'] = false;
-    $gm_feature['properties']['incidentname'] = ucwords(strtolower($gm_feature['properties']['incidentname']));
+    $gm_feature['properties']['incidentname'] = trim(ucwords(strtolower($gm_feature['properties']['incidentname'])));
 	$name = strtolower(trim($gm_feature['properties']['incidentname']));
 	$state = ($gm_feature['properties']['state'] == 'TA') ? 'CA' : $gm_feature['properties']['state'];
 	if (!isset($gm_pushed[$state])) {
