@@ -185,6 +185,12 @@ foreach ($perim_raw['features'] as $perim_feature) {
 		}
 		unset($i);
 	}
+	foreach ($gm_output as $key => $value) {
+		$sim = similar_text(strtolower(trim($value['properties']['incidentname'])), strtolower(trim($perim_feature['properties']['incidentname'])), $perc);
+		if ((int)$perc > 90 && $perim_feature['properties']['state'] == $value['properties']['state']) {
+			$gm_output[$key]['properties']['acres'] = (round($perim_feature['properties']['gisacres'],0) > round($value['properties']['acres'],0)) ? round($perim_feature['properties']['gisacres'],0) : $value['properties']['acres'];
+		}
+	}
 	array_push($perim_output, $perim_feature);
 }
 
@@ -211,7 +217,7 @@ if (file_get_contents('./cache/' . $perim_all_file)) {
 	file_put_contents('./cache/wildfires-combined-perims.json.old', file_get_contents('./cache/' . $perim_all_file));
 }
 file_put_contents('./cache/wildfires-combined-perims.json', $perim_all);
-
+/*
 // Set up FTP connection
 $conn_id = ftp_connect($FTP_SERVER) or die("Couldn't connect to $FTP_SERVER");
 $ftp_logged_in = ftp_login($conn_id, $FTP_USER_NAME, $FTP_USER_PASS);
@@ -240,7 +246,7 @@ if ($perim_uploaded) {
 echo $perim_error_out."\n";
 
 //close the FTP connection
-ftp_close($conn_id);
+ftp_close($conn_id); */
 
 $run_date = date('Y-m-d H:i:s', time());
 echo $run_date . ' parse completed!'."\n";
