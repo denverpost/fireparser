@@ -135,7 +135,9 @@ $count_two = 0;
 foreach ($gm_array as $gm_feature) {
 	$state = ($gm_feature['properties']['state'] == 'TA') ? 'CA' : $gm_feature['properties']['state'];
 	foreach ($iw_output as $iw_item) {
+		// CALCULATE SIMILARITY OF NAME
 		$sim = similar_text(strtolower(trim($gm_feature['properties']['incidentname'])), strtolower(trim($iw_item['title'])), $perc);
+		// IF NAME AND STATE ARE THE SAME
 		if ((int)$perc > 90 && $iw_item['state'] == $state) {
 			$gm_feature['properties']['iw_link'] = $iw_item['link'];
 			if (isset($iw_item['description'])) {
@@ -144,12 +146,11 @@ foreach ($gm_array as $gm_feature) {
 			}
 		}
 	}
-	// REMOVE UNNEEDED FIELDS HERE
 	if ($state == 'CO') {
+		// PUSH ONLY CO FIRES TO CO LIST
 		array_push($co_gm_output, $gm_feature);	
-	} else {
-		array_push($gm_output, $gm_feature);
 	}
+	array_push($gm_output, $gm_feature);
 }
 echo 'ADDED ' . $count_two . ' Inciweb links to GeoMAC data.' . "\n";
 
@@ -163,7 +164,7 @@ if ($perim_raw) {
 
 // tolerance and include for the RDP simplification
 require 'douglas-peucker.php';
-$tolerance = .0002;
+$tolerance = .0003;
 
 // GeoMAC perimiter data elements we don't need
 $junk_props = array('objectid', 'agency', 'comments', 'mapmethod', 'uniquefireidentifier', 'pooownerunit', 'complexname', 'firecode', 'complexparentirwinid', 'pooresponsibleunit', 'localincidentidentifier', 'irwinid', 'incomplex', 'complexfirecode', 'mergeid', 'st_area(shape)', 'st_length(shape)');
@@ -180,12 +181,15 @@ foreach ($perim_raw['features'] as $perim_feature) {
 	foreach ($junk_props as $junk_prop) {
 		unset($perim_feature['properties'][$junk_prop]);
 	}
+	// MAKE AN INCIWEB LINK FROM THE INCIWEB ID IF PROVIDED
 	if (isset($perim_feature['properties']['inciwebid']) && is_int($perim_feature['properties']['inciwebid'])) {
 		$perim_feature['properties']['inciwebid'] = 'http://inciweb.nwcg.org/incident/' . $perim_feature['properties']['inciwebid'] . '/';
 	}
 	if ($perim_feature['geometry']['type'] == 'Polygon') {
+		// SIMPLIFY THE GEOJSON A LITTLE
 		$i = 0;
 		foreach ($perim_feature['geometry']['coordinates'] as $coords) {
+			$tolerance = ($perim_feature['properties']['state'] == 'CO') ? $tolerance : .0005;
 			$perim_feature['geometry']['coordinates'][$i] = simplify_RDP($coords, $tolerance);
 			$i++;
 		}
@@ -193,6 +197,7 @@ foreach ($perim_raw['features'] as $perim_feature) {
 	}
 	foreach ($gm_output as $key => $value) {
 		$sim = similar_text(strtolower(trim($value['properties']['incidentname'])), strtolower(trim($perim_feature['properties']['incidentname'])), $perc);
+		// IF NAME AND STATE ARE THE SAME
 		if ((int)$perc > 90 && $perim_feature['properties']['state'] == $value['properties']['state']) {
 			if ($value['properties']['reportdatetime'] < $perim_feature['properties']['perimeterdatetime']) {
 				$gm_output[$key]['properties']['acres'] = (round($perim_feature['properties']['gisacres'],0) > round($value['properties']['acres'],0)) ? round($perim_feature['properties']['gisacres'],0) : $value['properties']['acres'];
@@ -200,10 +205,10 @@ foreach ($perim_raw['features'] as $perim_feature) {
 		}
 	}
 	if ($perim_feature['properties']['state'] == 'CO') {
+		// PUSH ONLY CO FIRE TO CO-ONLY DATA
 		array_push($co_perim_output, $perim_feature);
-	} else {
-		array_push($perim_output, $perim_feature);
 	}
+	array_push($perim_output, $perim_feature);
 }
 
 /**
@@ -251,7 +256,7 @@ ftp_pasv($conn_id, TRUE);
 
 // FTP the combined data
 $ftp_uploaded = ftp_put($conn_id, $FTP_DIRECTORY . '/' . $output_all_file, './cache/wildfires-combined-all.json', FTP_ASCII);
-
+msleep(.25);
 if ($ftp_uploaded) {
 	$error_out = 'Fire data file uploaded!';
 	purgeFTP($output_all_file);
@@ -262,7 +267,7 @@ echo $error_out."\n";
 
 // FTP the CO combined data
 $co_ftp_uploaded = ftp_put($conn_id, $FTP_DIRECTORY . '/' . $co_output_all_file, './cache/wildfires-combined-all-co.json', FTP_ASCII);
-
+msleep(.25);
 if ($co_ftp_uploaded) {
 	$co_error_out = 'Colorado fire data file uploaded!';
 	purgeFTP($co_output_all_file);
@@ -273,7 +278,7 @@ echo $co_error_out."\n";
 
 // FTP the perimeter data
 $perim_uploaded = ftp_put($conn_id, $FTP_DIRECTORY . '/' . $perim_all_file, './cache/wildfires-combined-perims.json', FTP_ASCII);
-
+msleep(.25);
 if ($perim_uploaded) {
 	$perim_error_out = 'Fire perimeter file uploaded!';
 	purgeFTP($perim_all_file);
@@ -284,7 +289,7 @@ echo $perim_error_out."\n";
 
 // FTP the CO perimeter data
 $co_perim_uploaded = ftp_put($conn_id, $FTP_DIRECTORY . '/' . $co_perim_all_file, './cache/wildfires-combined-perims-co.json', FTP_ASCII);
-
+msleep(.25);
 if ($co_perim_uploaded) {
 	$co_perim_error_out = 'Colorado fire perimeter file uploaded!';
 	purgeFTP($co_perim_all_file);
