@@ -40,6 +40,8 @@ $gm_array = array();
 $gm_pushed = array('AL' => array(), 'AK' => array(), 'AS' => array(), 'AZ' => array(), 'AR' => array(), 'CA' => array(), 'CO' => array(), 'CT' => array(), 'DE' => array(), 'DC' => array(), 'FM' => array(), 'FL' => array(), 'GA' => array(), 'GU' => array(), 'HI' => array(), 'ID' => array(), 'IL' => array(), 'IN' => array(), 'IA' => array(), 'KS' => array(), 'KY' => array(), 'LA' => array(), 'ME' => array(), 'MH' => array(), 'MD' => array(), 'MA' => array(), 'MI' => array(), 'MN' => array(), 'MS' => array(), 'MO' => array(), 'MT' => array(), 'NE' => array(), 'NV' => array(), 'NH' => array(), 'NJ' => array(), 'NM' => array(), 'NY' => array(), 'NC' => array(), 'ND' => array(), 'MP' => array(), 'OH' => array(), 'OK' => array(), 'OR' => array(), 'PW' => array(), 'PA' => array(), 'PR' => array(), 'RI' => array(), 'SC' => array(), 'SD' => array(), 'TN' => array(), 'TX' => array(), 'UT' => array(), 'VT' => array(), 'VI' => array(), 'VA' => array(), 'WA' => array(), 'WV' => array(), 'WI' => array(), 'WY' => array(), 'AE' => array(), 'AA' => array(), 'AP' => array());
 $gm_output = array();
 $perim_output = array();
+$co_gm_output = array();
+$co_perim_output = array();
 
 // Set up the Inciweb feed
 $iw_feed = implode(file('https://inciweb.nwcg.gov/feeds/rss/incidents/'));
@@ -143,7 +145,11 @@ foreach ($gm_array as $gm_feature) {
 		}
 	}
 	// REMOVE UNNEEDED FIELDS HERE
-	array_push($gm_output, $gm_feature);
+	if ($state == 'CO') {
+		array_push($co_gm_output, $gm_feature);	
+	} else {
+		array_push($gm_output, $gm_feature);
+	}
 }
 echo 'ADDED ' . $count_two . ' Inciweb links to GeoMAC data.' . "\n";
 
@@ -193,7 +199,11 @@ foreach ($perim_raw['features'] as $perim_feature) {
 			}
 		}
 	}
-	array_push($perim_output, $perim_feature);
+	if ($perim_feature['properties']['state'] == 'CO') {
+		array_push($co_perim_output, $perim_feature);
+	} else {
+		array_push($perim_output, $perim_feature);
+	}
 }
 
 /**
@@ -208,6 +218,13 @@ if (file_get_contents('./cache/' . $output_all_file)) {
 }
 file_put_contents('./cache/wildfires-combined-all.json', $output_all);
 
+$co_output_all = json_encode($co_gm_output);
+$co_output_all_file = 'wildfires-combined-all-co.json';
+if (file_get_contents('./cache/' . $co_output_all_file)) {
+	file_put_contents('./cache/wildfires-combined-all-co.json.old', file_get_contents('./cache/' . $co_output_all_file));
+}
+file_put_contents('./cache/wildfires-combined-all-co.json', $co_output_all);
+
 /**
  * Encode the processed perimeter data array into json,
  * store it as a file (making a backup of the old file if
@@ -219,6 +236,13 @@ if (file_get_contents('./cache/' . $perim_all_file)) {
 	file_put_contents('./cache/wildfires-combined-perims.json.old', file_get_contents('./cache/' . $perim_all_file));
 }
 file_put_contents('./cache/wildfires-combined-perims.json', $perim_all);
+
+$co_perim_all = json_encode($co_perim_output);
+$co_perim_all_file = 'wildfires-combined-perims-co.json';
+if (file_get_contents('./cache/' . $co_perim_all_file)) {
+	file_put_contents('./cache/wildfires-combined-perims-co.json.old', file_get_contents('./cache/' . $co_perim_all_file));
+}
+file_put_contents('./cache/wildfires-combined-perims-co.json', $co_perim_all);
 
 // Set up FTP connection
 $conn_id = ftp_connect($FTP_SERVER) or die("Couldn't connect to $FTP_SERVER");
@@ -236,6 +260,17 @@ if ($ftp_uploaded) {
 }
 echo $error_out."\n";
 
+// FTP the CO combined data
+$co_ftp_uploaded = ftp_put($conn_id, $FTP_DIRECTORY . '/' . $co_output_all_file, './cache/wildfires-combined-all-co.json', FTP_ASCII);
+
+if ($co_ftp_uploaded) {
+	$co_error_out = 'Colorado fire data file uploaded!';
+	purgeFTP($co_output_all_file);
+} else {
+	$co_error_out = 'An oops has occurred...';
+}
+echo $co_error_out."\n";
+
 // FTP the perimeter data
 $perim_uploaded = ftp_put($conn_id, $FTP_DIRECTORY . '/' . $perim_all_file, './cache/wildfires-combined-perims.json', FTP_ASCII);
 
@@ -246,6 +281,17 @@ if ($perim_uploaded) {
 	$perim_error_out = 'An oops has occurred...';
 }
 echo $perim_error_out."\n";
+
+// FTP the CO perimeter data
+$co_perim_uploaded = ftp_put($conn_id, $FTP_DIRECTORY . '/' . $co_perim_all_file, './cache/wildfires-combined-perims-co.json', FTP_ASCII);
+
+if ($co_perim_uploaded) {
+	$co_perim_error_out = 'Colorado fire perimeter file uploaded!';
+	purgeFTP($co_perim_all_file);
+} else {
+	$co_perim_error_out = 'An oops has occurred...';
+}
+echo $co_perim_error_out."\n";
 
 //close the FTP connection
 ftp_close($conn_id);
